@@ -8,15 +8,14 @@ const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
 const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
 const redis = url && token ? new Redis({ url, token }) : null;
 
-if (!redis && process.env.VERCEL) {
-  throw new Error("Upstash Redis is not configured. Add it from the Vercel Marketplace.");
-}
 
 type FileStore = { kv: Record<string, unknown>; sets: Record<string, string[]>; counters: Record<string, { n: number; exp: number }> };
 const FILE = path.join(process.cwd(), ".data", "db.json");
 let queue: Promise<unknown> = Promise.resolve();
 
 async function withFile<T>(fn: (s: FileStore) => T | Promise<T>, write = false): Promise<T> {
+  // Vercel's filesystem is read-only and per-instance, so the file fallback is local-only.
+  if (process.env.VERCEL) throw new Error("Upstash Redis is not configured. Add it from the Vercel Marketplace.");
   const run = queue.then(async () => {
     let store: FileStore;
     try {
