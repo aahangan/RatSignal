@@ -1,7 +1,9 @@
 import { CITY_IDS, getLeads, normalizeZips, type CityId } from "@/lib/cities";
+import { allow, clientIp } from "@/lib/db";
 
 // Lets visitors see how many leads their service area produced recently, before paying.
 export async function GET(req: Request) {
+  if (!(await allow(`preview:${clientIp(req)}`, 120, 3600))) return Response.json({ error: "Slow down" }, { status: 429 });
   const params = new URL(req.url).searchParams;
   const city = params.get("city") as CityId;
   if (!CITY_IDS.includes(city)) return Response.json({ error: "Unknown city" }, { status: 400 });
