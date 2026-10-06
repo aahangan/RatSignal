@@ -10,7 +10,7 @@ and delivers them by dashboard and a 7am email.
 - `src/lib/accounts.ts`: accounts, lead pipeline states, exclusive zip locks, login cookie.
 - Stripe Checkout (7-day trial) creates the account; the webhook keeps its status in sync. Exclusive zips are a per-zip subscription item.
 - `src/app/api/cron/digest`: daily email, triggered by Vercel Cron (`vercel.json`, 11:00 UTC ≈ 7am ET).
-- `src/lib/outreach.ts`: Claude drafts a call script, email and letter from the actual inspection notes.
+- `src/lib/outreach.ts`: AI drafts a call script, email and letter from the actual inspection notes.
 
 ## Run locally
 ```
