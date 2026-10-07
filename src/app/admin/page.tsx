@@ -33,7 +33,7 @@ export default async function Admin() {
           <div className="overflow-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted uppercase">
-                <tr><th className="py-2 pr-3">Company</th><th className="py-2 pr-3">Status</th><th className="py-2 pr-3">Area</th><th className="py-2">Since</th></tr>
+                <tr><th className="py-2 pr-3">Company</th><th className="py-2 pr-3">Status</th><th className="py-2 pr-3">Area</th><th className="py-2 pr-3">Since</th><th className="py-2 pr-3">Last login</th><th className="py-2">Leads emailed</th></tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {accounts.map((a) => (
@@ -44,7 +44,9 @@ export default async function Admin() {
                       {!isLive(a) && <span className="ml-1 text-signal">(inactive)</span>}
                     </td>
                     <td className="py-2 pr-3">{getVertical(a.vertical).id === "vermin" ? "Pest" : "Grease"} · {CITIES[a.city].short}: {a.zips.length ? a.zips.join(", ") : "all"}</td>
-                    <td className="py-2">{fmt(a.createdAt)}</td>
+                    <td className="py-2 pr-3">{fmt(a.createdAt)}</td>
+                    <td className="py-2 pr-3">{a.lastSeenAt ? fmt(a.lastSeenAt) : <span className="text-muted">never</span>}</td>
+                    <td className="py-2">{Object.keys(a.sent).length}</td>
                   </tr>
                 ))}
               </tbody>

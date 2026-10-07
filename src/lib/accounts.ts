@@ -28,6 +28,10 @@ export type Account = {
   sent: Record<string, number>;
   createdAt: number;
   pilotEndsAt?: number;
+  /** Last time they opened a login link or invite. */
+  lastLoginAt?: number;
+  /** Last time they loaded a signed-in page (updated at most hourly). */
+  lastSeenAt?: number;
 };
 
 export type LeadStatus = "new" | "called" | "quoted" | "won" | "lost";
@@ -153,7 +157,19 @@ export async function signOut() {
 
 export async function currentAccount(): Promise<Account | null> {
   const session = unseal<{ aid: string }>((await cookies()).get(COOKIE)?.value);
-  return session ? getAccount(session.aid) : null;
+  const account = session ? await getAccount(session.aid) : null;
+  if (account && Date.now() - (account.lastSeenAt ?? 0) > 60 * 60 * 1000) {
+    account.lastSeenAt = Date.now();
+    await saveAccount(account);
+  }
+  return account;
+}
+
+export async function recordLogin(accountId: string) {
+  const account = await getAccount(accountId);
+  if (!account) return;
+  account.lastLoginAt = account.lastSeenAt = Date.now();
+  await saveAccount(account);
 }
 
 /** For pages: sends visitors without an account to the login page. */
