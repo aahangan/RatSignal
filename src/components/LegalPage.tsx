@@ -3,7 +3,7 @@ import { SiteFooter } from "./SiteFooter";
 
 export const LEGAL = {
   company: process.env.NEXT_PUBLIC_LEGAL_NAME ?? "RatSignal",
-  contact: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "support@ratsignal.com",
+  contact: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "support@getratsignal.com",
   updated: "October 1, 2026",
 };
 

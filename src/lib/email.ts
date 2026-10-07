@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM = process.env.EMAIL_FROM ?? "RatSignal <alerts@ratsignal.com>";
+const FROM = process.env.EMAIL_FROM ?? "RatSignal <alerts@getratsignal.com>";
 
 export function emailConfigured() {
   return resend !== null;
