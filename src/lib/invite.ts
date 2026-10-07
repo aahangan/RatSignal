@@ -22,7 +22,7 @@ export function inviteEmail(input: InviteInput, endsAt: number, link: string) {
   const subject = `Your RatSignal access for ${input.zips.length ? input.zips.join(", ") : CITIES[input.city].short} is ready`;
   const paras = [
     "As promised, here's your free access to RatSignal.",
-    `Starting tomorrow, you'll get an email at 7am every morning with any restaurants in ${area} newly cited for pests, ranked by urgency, with phone numbers.`,
+    `Whenever restaurants in ${area} are newly cited for pests, you'll get them in an email at 7am the next morning, ranked by urgency, with phone numbers. On quiet days there's no email.`,
     "You also have a dashboard with every recent citation in your area, where you can mark who you've called and get a ready-to-use call script for any restaurant.",
   ];
   const after = [
