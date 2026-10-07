@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { DashboardShell } from "@/components/DashboardShell";
 import { BillingButton, SettingsForm, ZipLocks, type ZipRow } from "@/components/Settings";
-import { isTrial, lockOwner, requireAccount } from "@/lib/accounts";
-import { getLeads } from "@/lib/cities";
+import { getLeads } from "@/engine/leads";
+import { accountVertical, isTrial, lockOwner, requireAccount } from "@/lib/accounts";
 
 export const metadata: Metadata = { title: "Settings · RatSignal" };
 
@@ -10,13 +10,13 @@ export default async function Settings() {
   const account = await requireAccount();
 
   // Lead volume per zip over 90 days helps them decide which zips are worth locking.
-  const leads = await getLeads({ city: account.city, zips: account.zips, days: 90 });
+  const leads = await getLeads(accountVertical(account), account.city, { zips: account.zips, days: 90 });
   const volume = new Map<string, number>();
   for (const l of leads) volume.set(l.zip, (volume.get(l.zip) ?? 0) + 1);
   const candidates = account.zips.length
     ? account.zips
     : [...new Set([...account.lockedZips, ...[...volume].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([z]) => z)])];
-  const owners = await Promise.all(candidates.map((z) => lockOwner(account.city, z)));
+  const owners = await Promise.all(candidates.map((z) => lockOwner(account, z)));
   const rows: ZipRow[] = candidates.map((zip, i) => ({
     zip,
     leads90: volume.get(zip) ?? 0,

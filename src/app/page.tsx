@@ -2,14 +2,17 @@ import Link from "next/link";
 import { LeadSummary } from "@/components/LeadCard";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getLeads, type Lead } from "@/lib/cities";
+import { getLeads } from "@/engine/leads";
+import { labelsFor } from "@/engine/schema";
+import type { Lead } from "@/lib/cities";
+import { vermin } from "@/verticals/vermin";
 
 export const revalidate = 3600;
 
 async function stats() {
   const [nyc, chicago] = await Promise.all([
-    getLeads({ city: "nyc", zips: [], days: 30 }).catch(() => [] as Lead[]),
-    getLeads({ city: "chicago", zips: [], days: 30 }).catch(() => [] as Lead[]),
+    getLeads(vermin, "nyc", { zips: [], days: 30 }).catch(() => [] as Lead[]),
+    getLeads(vermin, "chicago", { zips: [], days: 30 }).catch(() => [] as Lead[]),
   ]);
   const thisWeek = nyc.filter((l) => Date.now() - new Date(l.date).getTime() < 7 * 86400000);
   return { nyc: nyc.length, chicago: chicago.length, closed: nyc.filter((l) => l.closed).length, samples: thisWeek.slice(0, 3) };
@@ -74,7 +77,7 @@ export default async function Home() {
             <div className="divide-y divide-line">
               {s.samples.map((l) => (
                 <div key={l.id} className="py-4 first:pt-0 last:pb-0">
-                  <LeadSummary lead={l} masked />
+                  <LeadSummary lead={l} labels={labelsFor(vermin)} masked />
                 </div>
               ))}
               {!s.samples.length && <p className="text-sm text-muted">Loading today&apos;s citations…</p>}

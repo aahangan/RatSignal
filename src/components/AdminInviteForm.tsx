@@ -7,7 +7,7 @@ type Result = { sent: boolean; subject: string; html: string };
 
 export function AdminInviteForm() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", name: "", company: "", city: "nyc", zips: "", days: 14 });
+  const [form, setForm] = useState({ email: "", name: "", company: "", vertical: "vermin", city: "nyc", zips: "", days: 14 });
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,13 @@ export function AdminInviteForm() {
         <input className="field" placeholder="First name (optional)" value={form.name} onChange={set("name")} />
         <input className="field" placeholder="Company" value={form.company} onChange={set("company")} />
       </div>
-      <input className="field" type="email" placeholder="Email" value={form.email} onChange={set("email")} />
+      <div className="grid grid-cols-[1fr_auto] gap-3">
+        <input className="field" type="email" placeholder="Email" value={form.email} onChange={set("email")} />
+        <select className="field w-auto" value={form.vertical} onChange={set("vertical")}>
+          <option value="vermin">Pest leads</option>
+          <option value="grease">Grease & drain leads</option>
+        </select>
+      </div>
       <div className="grid grid-cols-[auto_1fr_auto] gap-3">
         <select className="field w-auto" value={form.city} onChange={set("city")}>
           <option value="nyc">NYC</option>

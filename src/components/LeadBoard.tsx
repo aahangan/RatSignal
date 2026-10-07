@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { LeadState, LeadStatus } from "@/lib/accounts";
-import { PEST_LABELS, type Lead, type PestType } from "@/lib/cities";
+import type { VerticalLabels } from "@/engine/schema";
+import type { Lead } from "@/lib/cities";
 import { LeadSummary } from "./LeadCard";
 
 const STATUSES: { id: LeadStatus; label: string }[] = [
@@ -15,16 +16,16 @@ const STATUSES: { id: LeadStatus; label: string }[] = [
 
 type Draft = { callScript: string; email: { subject: string; body: string }; letter: string };
 
-export function LeadBoard({ leads, initialStates }: { leads: Lead[]; initialStates: Record<string, LeadState> }) {
+export function LeadBoard({ leads, initialStates, labels }: { leads: Lead[]; initialStates: Record<string, LeadState>; labels: VerticalLabels }) {
   const [states, setStates] = useState(initialStates);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
-  const [pestFilter, setPestFilter] = useState<PestType | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"heat" | "date">("heat");
   const [outreachFor, setOutreachFor] = useState<Lead | null>(null);
 
   const statusOf = (id: string) => states[id]?.status ?? "new";
-  const pestsPresent = useMemo(() => [...new Set(leads.flatMap((l) => l.pests))], [leads]);
+  const categoriesPresent = useMemo(() => [...new Set(leads.flatMap((l) => l.categories))], [leads]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: leads.length };
     for (const l of leads) c[statusOf(l.id)] = (c[statusOf(l.id)] ?? 0) + 1;
@@ -36,11 +37,11 @@ export function LeadBoard({ leads, initialStates }: { leads: Lead[]; initialStat
     const q = query.trim().toLowerCase();
     return leads
       .filter((l) => statusFilter === "all" || statusOf(l.id) === statusFilter)
-      .filter((l) => pestFilter === "all" || l.pests.includes(pestFilter))
+      .filter((l) => categoryFilter === "all" || l.categories.includes(categoryFilter))
       .filter((l) => !q || `${l.name} ${l.address} ${l.zip} ${l.category ?? ""}`.toLowerCase().includes(q))
       .sort((a, b) => (sort === "heat" ? b.heat - a.heat || b.date.localeCompare(a.date) : b.date.localeCompare(a.date) || b.heat - a.heat));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads, states, statusFilter, pestFilter, query, sort]);
+  }, [leads, states, statusFilter, categoryFilter, query, sort]);
 
   async function update(leadId: string, patch: Partial<LeadState>) {
     const next: LeadState = { ...states[leadId], status: patch.status ?? statusOf(leadId), note: patch.note ?? states[leadId]?.note, updatedAt: states[leadId]?.updatedAt ?? 0 }; // the server stamps the real time
@@ -64,9 +65,9 @@ export function LeadBoard({ leads, initialStates }: { leads: Lead[]; initialStat
       </div>
       <div className="mb-5 flex flex-wrap gap-2">
         <input className="field w-full py-2 text-sm sm:w-auto sm:max-w-xs sm:flex-1" placeholder="Search name, address, zip…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="field w-auto py-2 text-sm" value={pestFilter} onChange={(e) => setPestFilter(e.target.value as PestType | "all")}>
-          <option value="all">All pests</option>
-          {pestsPresent.map((p) => <option key={p} value={p}>{PEST_LABELS[p]}</option>)}
+        <select className="field w-auto py-2 text-sm" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="all">All types</option>
+          {categoriesPresent.map((c) => <option key={c} value={c}>{labels.categories[c] ?? c}</option>)}
         </select>
         <select className="field w-auto py-2 text-sm" value={sort} onChange={(e) => setSort(e.target.value as "heat" | "date")}>
           <option value="heat">Hottest first</option>
@@ -76,12 +77,12 @@ export function LeadBoard({ leads, initialStates }: { leads: Lead[]; initialStat
 
       {visible.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line p-10 text-center text-muted">
-          {leads.length === 0 ? "No pest citations in your area for this period. Try a longer range or add zip codes in Settings." : "No leads match these filters."}
+          {leads.length === 0 ? `No ${labels.noun.plural} in your area for this period. Try a longer range or add zip codes in Settings.` : "No leads match these filters."}
         </div>
       ) : (
         <ul className="divide-y divide-line rounded-2xl border border-line bg-card">
           {visible.map((l) => (
-            <LeadRow key={l.id} lead={l} state={states[l.id]} onUpdate={(p) => update(l.id, p)} onOutreach={() => setOutreachFor(l)} />
+            <LeadRow key={l.id} lead={l} labels={labels} state={states[l.id]} onUpdate={(p) => update(l.id, p)} onOutreach={() => setOutreachFor(l)} />
           ))}
         </ul>
       )}
@@ -91,14 +92,14 @@ export function LeadBoard({ leads, initialStates }: { leads: Lead[]; initialStat
   );
 }
 
-function LeadRow({ lead, state, onUpdate, onOutreach }: { lead: Lead; state?: LeadState; onUpdate: (p: Partial<LeadState>) => void; onOutreach: () => void }) {
+function LeadRow({ lead, labels, state, onUpdate, onOutreach }: { lead: Lead; labels: VerticalLabels; state?: LeadState; onUpdate: (p: Partial<LeadState>) => void; onOutreach: () => void }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState(state?.note ?? "");
   const status = state?.status ?? "new";
   return (
     <li className="p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
-        <div className="min-w-0 flex-1"><LeadSummary lead={lead} /></div>
+        <div className="min-w-0 flex-1"><LeadSummary lead={lead} labels={labels} /></div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 md:flex-col md:items-stretch">
           <select value={status} onChange={(e) => onUpdate({ status: e.target.value as LeadStatus })}
             className={`field w-32 py-1.5 text-sm font-medium ${status === "won" ? "border-emerald-500 text-emerald-700" : status === "new" ? "" : "border-foreground"}`}>

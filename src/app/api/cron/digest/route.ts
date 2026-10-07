@@ -1,55 +1,33 @@
-import { isLive, listAccounts, saveAccount, type Account } from "@/lib/accounts";
-import { CITIES, formatPhone, PEST_LABELS, type Lead } from "@/lib/cities";
-import { escapeHtml, layout, sendEmail } from "@/lib/email";
-import { leadsForAccount } from "@/lib/leads";
+import { timingSafeEqual } from "crypto";
+import { runKey, type RunReport } from "@/engine/run";
+import { db } from "@/lib/db";
+import { siteUrl } from "@/lib/leads";
+import { runFor, todayNY } from "@/lib/runtime";
 
 export const maxDuration = 300;
 
-const SENT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-
-function leadRow(l: Lead) {
-  const phone = formatPhone(l.phone);
-  return `<tr>
-    <td style="padding:10px 8px;border-top:1px solid #e4e4e7;vertical-align:top">
-      <b>${escapeHtml(l.name)}</b>${l.closed ? ' <span style="color:#e11d48;font-weight:700">CLOSED</span>' : ""}<br>
-      <span style="color:#52525b">${escapeHtml(l.address)} ${escapeHtml(l.zip)}</span><br>
-      ${phone ? `<a href="tel:${l.phone}" style="color:#18181b">${phone}</a> · ` : ""}${escapeHtml(l.pests.map((p) => PEST_LABELS[p]).join(", "))}
-      ${l.priorCitations ? ` · <b>${l.priorCitations} prior</b>` : ""}
-    </td>
-    <td style="padding:10px 8px;border-top:1px solid #e4e4e7;vertical-align:top;text-align:right;font-weight:800;color:${l.heat >= 60 ? "#e11d48" : "#18181b"}">${l.heat}</td>
-  </tr>`;
-}
-
-async function digestFor(account: Account, site: string) {
-  const now = Date.now();
-  for (const [key, t] of Object.entries(account.sent)) if (now - t > SENT_TTL_MS) delete account.sent[key];
-
-  const fresh = (await leadsForAccount(account, { days: 7 })).filter((l) => !account.sent[`${l.id}:${l.date}`]);
-  if (!fresh.length) return 0;
-
-  const top = fresh.slice(0, 25);
-  await sendEmail(
-    account.email,
-    `${fresh.length} new pest citation${fresh.length === 1 ? "" : "s"} in your area`,
-    layout(`<p>Good morning${account.company ? `, ${escapeHtml(account.company)}` : ""}. New pest citations in ${CITIES[account.city].name}, hottest first:</p>
-      <table style="width:100%;border-collapse:collapse;font-size:14px">${top.map(leadRow).join("")}</table>
-      ${fresh.length > top.length ? `<p>+ ${fresh.length - top.length} more in your dashboard.</p>` : ""}
-      <p><a href="${site}/dashboard" style="display:inline-block;background:#e11d48;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Open dashboard</a></p>`),
+function authorized(req: Request) {
+  const given = req.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
+  return [process.env.CRON_SECRET, process.env.ADMIN_SECRET].some(
+    (s) => !!s && s.length === given.length && timingSafeEqual(Buffer.from(s), Buffer.from(given)),
   );
-  for (const l of fresh) account.sent[`${l.id}:${l.date}`] = now;
-  await saveAccount(account);
-  return fresh.length;
 }
 
-// Vercel Cron calls this daily (see vercel.json) with "Authorization: Bearer $CRON_SECRET".
+// Vercel Cron calls this daily (vercel.json). Admins can also call it to backfill a missed day:
+//   ?date=YYYY-MM-DD   run for a specific day (default: today in New York)
+//   ?dryRun=1          report what would be sent without sending or recording anything
+//   ?force=1           run even if that day already completed (still never re-sends a lead)
 export async function GET(req: Request) {
-  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}` || !process.env.CRON_SECRET) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!authorized(req)) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const params = new URL(req.url).searchParams;
+  const date = params.get("date") ?? todayNY();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayNY()) return Response.json({ error: "Invalid date" }, { status: 400 });
+  const dryRun = params.get("dryRun") === "1";
+
+  if (!dryRun && params.get("force") !== "1") {
+    const previous = await db.get<RunReport>(runKey(date));
+    if (previous?.status === "completed") return Response.json({ skipped: "already completed", report: previous });
   }
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
-  const accounts = (await listAccounts()).filter((a) => isLive(a) && a.digest);
-  const results = await Promise.allSettled(accounts.map((a) => digestFor(a, site)));
-  const failed = results.filter((r) => r.status === "rejected");
-  failed.forEach((r) => console.error("digest failed", (r as PromiseRejectedResult).reason));
-  return Response.json({ accounts: accounts.length, failed: failed.length });
+  const report = await runFor(date, siteUrl(req), { dryRun });
+  return Response.json({ report }, { status: report.status === "failed" ? 500 : 200 });
 }

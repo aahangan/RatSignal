@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { currentAccount, isLive } from "@/lib/accounts";
+import { accountVertical, currentAccount, isLive } from "@/lib/accounts";
 import { CITY_IDS } from "@/lib/cities";
 import { allow } from "@/lib/db";
 import { draftOutreach, OutreachError } from "@/lib/outreach";
@@ -10,18 +10,19 @@ export const maxDuration = 60;
 // The client sends the lead it's looking at. It only shapes the draft text, so trusting it is fine.
 const LeadInput = z.object({
   id: z.string().max(100),
-  city: z.enum(CITY_IDS as [string, ...string[]]),
+  vertical: z.string().max(40),
+  city: z.enum(CITY_IDS),
   name: z.string().max(200),
   address: z.string().max(300),
   zip: z.string().max(10),
   category: z.string().max(100).optional(),
   date: z.string().max(20),
   inspectionType: z.string().max(200).optional(),
-  pests: z.array(z.enum(["rats", "mice", "rodents", "roaches", "flies", "other", "conditions"])).max(10),
+  categories: z.array(z.string().max(40)).max(10),
+  flags: z.array(z.string().max(40)).max(10),
   notes: z.array(z.string().max(600)).max(10),
   closed: z.boolean(),
   failed: z.boolean(),
-  pestControlOrdered: z.boolean(),
   priorCitations: z.number().int().min(0).max(100),
   heat: z.number(),
 });
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const draft = await draftOutreach(parsed.data as Parameters<typeof draftOutreach>[0], account.company);
+    const draft = await draftOutreach(parsed.data, account.company, accountVertical(account));
     return Response.json({ draft });
   } catch (err) {
     if (err instanceof OutreachError) return Response.json({ error: err.message }, { status: 422 });

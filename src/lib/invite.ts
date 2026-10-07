@@ -2,6 +2,7 @@ import { type Account, createAccount, findAccountByEmail, saveAccount } from "./
 import { CITIES, type CityId } from "./cities";
 import { escapeHtml, layout, sendEmail } from "./email";
 import { seal } from "./seal";
+import { getVertical, type VerticalId } from "@/verticals";
 
 export type InviteInput = {
   email: string;
@@ -10,6 +11,7 @@ export type InviteInput = {
   city: CityId;
   zips: string[];
   days: number;
+  vertical: VerticalId;
 };
 
 const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -22,7 +24,7 @@ export function inviteEmail(input: InviteInput, endsAt: number, link: string) {
   const subject = `Your RatSignal access for ${input.zips.length ? input.zips.join(", ") : CITIES[input.city].short} is ready`;
   const paras = [
     "As promised, here's your free access to RatSignal.",
-    `Whenever restaurants in ${area} are newly cited for pests, you'll get them in an email at 7am the next morning, ranked by urgency, with phone numbers. On quiet days there's no email.`,
+    `Whenever restaurants in ${area} get new ${getVertical(input.vertical).noun.plural}, you'll get them in an email at 7am the next morning, ranked by urgency, with phone numbers. On quiet days there's no email.`,
     "You also have a dashboard with every recent citation in your area, where you can mark who you've called and get a ready-to-use call script for any restaurant.",
   ];
   const after = [
@@ -54,11 +56,11 @@ export async function invite(input: InviteInput, site: string, opts: { send: boo
 
   let account: Account;
   if (existing) {
-    Object.assign(existing, { company: input.company, city: input.city, zips: input.zips, status: "pilot", pilotEndsAt: endsAt, digest: true });
+    Object.assign(existing, { company: input.company, vertical: input.vertical, city: input.city, zips: input.zips, status: "pilot", pilotEndsAt: endsAt, digest: true });
     await saveAccount(existing);
     account = existing;
   } else {
-    account = await createAccount({ email: input.email, company: input.company, city: input.city, zips: input.zips, status: "pilot", pilotEndsAt: endsAt });
+    account = await createAccount({ email: input.email, company: input.company, vertical: input.vertical, city: input.city, zips: input.zips, status: "pilot", pilotEndsAt: endsAt });
   }
   const token = seal({ aid: account.id, exp: Date.now() + LINK_TTL_MS });
   const email = inviteEmail(input, endsAt, `${site}/api/auth/verify?token=${encodeURIComponent(token)}`);

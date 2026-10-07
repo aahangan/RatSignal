@@ -1,4 +1,5 @@
-import { CITIES, formatPhone, maskPhone, PEST_LABELS, type Lead } from "@/lib/cities";
+import type { VerticalLabels } from "@/engine/schema";
+import { CITIES, formatPhone, maskPhone, type Lead } from "@/lib/cities";
 
 export function heatColor(heat: number) {
   return heat >= 75 ? "bg-signal text-white" : heat >= 55 ? "bg-amber text-night" : "bg-zinc-200 text-zinc-700";
@@ -10,7 +11,7 @@ export function daysAgoLabel(date: string) {
 }
 
 /** Read-only lead summary shared by the demo, landing page and dashboard. */
-export function LeadSummary({ lead, masked = false }: { lead: Lead; masked?: boolean }) {
+export function LeadSummary({ lead, labels, masked = false }: { lead: Lead; labels: VerticalLabels; masked?: boolean }) {
   const phone = masked ? maskPhone(lead.phone) : formatPhone(lead.phone);
   const query = encodeURIComponent(`${lead.name} ${lead.address} ${CITIES[lead.city].name}`);
   return (
@@ -23,15 +24,17 @@ export function LeadSummary({ lead, masked = false }: { lead: Lead; masked?: boo
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="font-semibold">{lead.name}</h3>
           {lead.closed && <span className="rounded bg-signal px-1.5 py-0.5 text-[10px] font-bold text-white">CLOSED BY DOH</span>}
-          {lead.pestControlOrdered && <span className="rounded bg-amber/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">PEST CONTROL ORDERED</span>}
+          {lead.flags.map((f) => (
+            <span key={f} className="rounded bg-amber/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{labels.flags[f] ?? f}</span>
+          ))}
         </div>
         <p className="truncate text-sm text-muted">
           {lead.address} {lead.zip}
           {lead.category ? ` · ${lead.category}` : ""}
         </p>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {lead.pests.map((p) => (
-            <span key={p} className="rounded-full border border-line bg-background px-2 py-0.5 text-xs">{PEST_LABELS[p]}</span>
+          {lead.categories.map((c) => (
+            <span key={c} className="rounded-full border border-line bg-background px-2 py-0.5 text-xs">{labels.categories[c] ?? c}</span>
           ))}
           {lead.priorCitations > 0 && (
             <span className="rounded-full bg-signal/10 px-2 py-0.5 text-xs font-medium text-signal">

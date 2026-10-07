@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 type Preview = { count: number; hot: number; closed: number; zips: string[]; invalid: string[] };
 
-export function SignupForm({ initialError }: { initialError: string | null }) {
+export function SignupForm({ initialError, vertical }: { initialError: string | null; vertical: string }) {
   const [company, setCompany] = useState("");
   const [email, setEmail] = useState("");
   const [city, setCity] = useState<"nyc" | "chicago">("nyc");
@@ -17,13 +17,13 @@ export function SignupForm({ initialError }: { initialError: string | null }) {
   useEffect(() => {
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      fetch(`/api/preview?city=${city}&zips=${encodeURIComponent(zips)}`, { signal: ctrl.signal })
+      fetch(`/api/preview?vertical=${vertical}&city=${city}&zips=${encodeURIComponent(zips)}`, { signal: ctrl.signal })
         .then((r) => r.json())
         .then((d) => d.count !== undefined && setPreview(d))
         .catch(() => {});
     }, 400);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [city, zips]);
+  }, [city, zips, vertical]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +32,7 @@ export function SignupForm({ initialError }: { initialError: string | null }) {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ company, email, city, zips }),
+      body: JSON.stringify({ company, email, city, zips, vertical }),
     });
     const data = await res.json().catch(() => ({}));
     if (data.url) window.location.href = data.url;

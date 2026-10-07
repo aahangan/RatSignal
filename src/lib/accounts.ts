@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { DEFAULT_VERTICAL, getVertical } from "@/verticals";
 import type { CityId } from "./cities";
 import { db } from "./db";
 import { seal, unseal } from "./seal";
@@ -12,6 +13,8 @@ export type Account = {
   id: string;
   email: string;
   company: string;
+  /** Which lead product they buy (see src/verticals). Missing on older accounts = the default. */
+  vertical?: string;
   city: CityId;
   /** Service area. Empty = whole city. */
   zips: string[];
@@ -35,7 +38,8 @@ const k = {
   account: (id: string) => `acct:${id}`,
   email: (email: string) => `email:${email.toLowerCase()}`,
   sub: (sub: string) => `sub:${sub}`,
-  lock: (city: CityId, zip: string) => `lock:${city}:${zip}`,
+  // Pest locks keep their original key so existing exclusive zips carry over.
+  lock: (vertical: string, city: CityId, zip: string) => (vertical === DEFAULT_VERTICAL ? `lock:${city}:${zip}` : `lock:${vertical}:${city}:${zip}`),
   states: (id: string) => `states:${id}`,
   all: "accounts",
 };
@@ -93,22 +97,24 @@ export async function createAccount(input: Pick<Account, "email" | "company" | "
 
 // --- Exclusive zips ----------------------------------------------------------
 
-export async function lockOwner(city: CityId, zip: string) {
-  return db.get<string>(k.lock(city, zip));
+export const accountVertical = (a: Pick<Account, "vertical">) => getVertical(a.vertical);
+
+export async function lockOwner(account: Pick<Account, "vertical" | "city">, zip: string) {
+  return db.get<string>(k.lock(accountVertical(account).id, account.city, zip));
 }
 
 /** Zips in this city held by other accounts; their leads are hidden from everyone else. */
 export async function zipsLockedByOthers(account: Account, zips: string[]) {
-  const owners = await db.mget<string>(zips.map((z) => k.lock(account.city, z)));
+  const owners = await db.mget<string>(zips.map((z) => k.lock(accountVertical(account).id, account.city, z)));
   return new Set(zips.filter((_, i) => owners[i] && owners[i] !== account.id));
 }
 
 export async function claimZip(account: Account, zip: string) {
-  return db.claim(k.lock(account.city, zip), account.id);
+  return db.claim(k.lock(accountVertical(account).id, account.city, zip), account.id);
 }
 
 export async function releaseZip(account: Account, zip: string) {
-  if ((await lockOwner(account.city, zip)) === account.id) await db.del(k.lock(account.city, zip));
+  if ((await lockOwner(account, zip)) === account.id) await db.del(k.lock(accountVertical(account).id, account.city, zip));
 }
 
 export async function releaseAllZips(account: Account) {

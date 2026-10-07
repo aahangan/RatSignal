@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { type Account, createAccount, findAccountByEmail, findAccountBySubscription, saveAccount } from "./accounts";
+import { isVerticalId } from "@/verticals";
 import { CITY_IDS, type CityId } from "./cities";
 import { db } from "./db";
 import { getStripe, toAccountStatus } from "./stripe";
@@ -21,9 +22,10 @@ export async function accountFromCheckout(sessionOrId: string | Stripe.Checkout.
 
   const email = (session.customer_details?.email ?? session.customer_email ?? "").toLowerCase();
   const meta = session.metadata ?? {};
-  const city = (CITY_IDS as string[]).includes(meta.city) ? (meta.city as CityId) : "nyc";
+  const city = (CITY_IDS as readonly string[]).includes(meta.city) ? (meta.city as CityId) : "nyc";
   const fields = {
     company: meta.company || "My company",
+    vertical: isVerticalId(meta.vertical) ? meta.vertical : undefined,
     city,
     zips: meta.zips ? meta.zips.split(",") : [],
     status: toAccountStatus(sub.status),

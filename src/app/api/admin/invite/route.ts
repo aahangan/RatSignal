@@ -3,15 +3,17 @@ import { z } from "zod";
 import { currentAccount, isAdmin } from "@/lib/accounts";
 import { CITY_IDS, normalizeZips, type CityId } from "@/lib/cities";
 import { invite } from "@/lib/invite";
+import { DEFAULT_VERTICAL, VERTICAL_IDS, type VerticalId } from "@/verticals";
 import { siteUrl } from "@/lib/leads";
 
 const Body = z.object({
   email: z.email().max(254),
   name: z.string().trim().max(80).optional(),
   company: z.string().trim().min(1).max(100),
-  city: z.enum(CITY_IDS as [string, ...string[]]),
+  city: z.enum(CITY_IDS),
   zips: z.string().max(2000),
   days: z.number().int().min(1).max(90),
+  vertical: z.enum(VERTICAL_IDS as [VerticalId, ...VerticalId[]]).default(DEFAULT_VERTICAL),
   send: z.boolean(),
 });
 

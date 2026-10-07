@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
     account.lockedZips = [...account.lockedZips, zip].sort();
   } else {
-    if ((await lockOwner(account.city, zip)) === account.id) await releaseZip(account, zip);
+    if ((await lockOwner(account, zip)) === account.id) await releaseZip(account, zip);
     account.lockedZips = account.lockedZips.filter((z) => z !== zip);
   }
 
