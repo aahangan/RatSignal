@@ -5,7 +5,8 @@ import type { CityId } from "./cities";
 import { db } from "./db";
 import { seal, unseal } from "./seal";
 
-export type AccountStatus = "trialing" | "active" | "past_due" | "canceled" | "dev";
+/** "pilot" = free invited trial with no card and no Stripe subscription; it ends at `pilotEndsAt`. */
+export type AccountStatus = "trialing" | "active" | "past_due" | "canceled" | "dev" | "pilot";
 
 export type Account = {
   id: string;
@@ -23,6 +24,7 @@ export type Account = {
   /** "leadId:date" → time it was emailed, so the digest never repeats a citation. */
   sent: Record<string, number>;
   createdAt: number;
+  pilotEndsAt?: number;
 };
 
 export type LeadStatus = "new" | "called" | "quoted" | "won" | "lost";
@@ -38,7 +40,16 @@ const k = {
   all: "accounts",
 };
 
-export const isLive = (a: Account) => ["trialing", "active", "past_due", "dev"].includes(a.status);
+export const isLive = (a: Account) =>
+  a.status === "pilot" ? (a.pilotEndsAt ?? 0) > Date.now() : ["trialing", "active", "past_due", "dev"].includes(a.status);
+
+/** Trials (paid or free) can't hold exclusive zips. */
+export const isTrial = (a: Account) => a.status === "trialing" || a.status === "pilot";
+
+export function isAdmin(a: Account | null) {
+  const admins = (process.env.ADMIN_EMAILS ?? "").toLowerCase().split(",").map((e) => e.trim()).filter(Boolean);
+  return !!a && admins.includes(a.email);
+}
 
 export async function getAccount(id: string) {
   return db.get<Account>(k.account(id));

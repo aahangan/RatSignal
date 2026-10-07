@@ -7,12 +7,12 @@ export function emailConfigured() {
   return resend !== null;
 }
 
-export async function sendEmail(to: string, subject: string, html: string) {
+export async function sendEmail(to: string, subject: string, html: string, opts: { replyTo?: string; text?: string } = {}) {
   if (!resend) {
     console.log(`[email disabled] to=${to} subject=${subject}`);
     return;
   }
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html });
+  const { error } = await resend.emails.send({ from: FROM, to, subject, html, replyTo: opts.replyTo, text: opts.text });
   if (error) throw new Error(error.message);
 }
 

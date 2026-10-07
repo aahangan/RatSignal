@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DashboardShell } from "@/components/DashboardShell";
 import { BillingButton, SettingsForm, ZipLocks, type ZipRow } from "@/components/Settings";
-import { lockOwner, requireAccount } from "@/lib/accounts";
+import { isTrial, lockOwner, requireAccount } from "@/lib/accounts";
 import { getLeads } from "@/lib/cities";
 
 export const metadata: Metadata = { title: "Settings · RatSignal" };
@@ -34,7 +34,7 @@ export default async function Settings() {
         <section className="rounded-2xl border border-line bg-card p-6">
           <h2 className="font-semibold">Exclusive zips</h2>
           <p className="mb-4 text-sm text-muted">$49/month per zip. While you hold a zip, other RatSignal customers don&apos;t see its leads.</p>
-          <ZipLocks rows={rows} trialing={account.status === "trialing"} />
+          <ZipLocks rows={rows} trialing={isTrial(account)} />
         </section>
       </div>
       {account.stripeCustomer && (
