@@ -1,5 +1,7 @@
 # RatSignal
 
+[![CI](https://github.com/aahangan/RatSignal/actions/workflows/ci.yml/badge.svg)](https://github.com/aahangan/RatSignal/actions/workflows/ci.yml)
+
 **Live: [getratsignal.com](https://getratsignal.com)** · [Live lead demo](https://getratsignal.com/demo)
 
 Built and maintained by [Aahan Gandhi](https://github.com/aahangan).
