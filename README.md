@@ -2,6 +2,8 @@
 
 **Live: [getratsignal.com](https://getratsignal.com)** · [Live lead demo](https://getratsignal.com/demo)
 
+Built and maintained by [Aahan Gandhi](https://github.com/aahangan).
+
 Daily lead service for local service businesses. It reads city restaurant-inspection open data (NYC and
 Chicago), finds establishments cited for problems a given trade can fix, scores them by urgency, and delivers
 them through a dashboard and a 7am email.
