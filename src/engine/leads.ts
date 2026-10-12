@@ -1,7 +1,7 @@
 // Fetches a vertical's source for one city and turns it into leads.
 import { normalizeCodes, normalizeText } from "./normalize";
 import type { CityId, Lead, Vertical } from "./schema";
-import { missingColumns, quoteList, type QueryOptions, type Row, socrataQuery } from "./sources/socrata";
+import { missingColumns, quoteList, type QueryOptions, type Row, socrataQuery, socrataQueryAll } from "./sources/socrata";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
@@ -54,11 +54,11 @@ export async function fetchLeads(v: Vertical, city: CityId, q: LeadQuery): Promi
   const opts = { fresh: q.fresh, revalidate: q.revalidate };
 
   const [rows, history] = await Promise.all([
-    socrataQuery(src.domain, src.dataset, {
+    socrataQueryAll(src.domain, src.dataset, {
       $where: whereClause(v, city, { zips: q.zips, from, to, includeOptional: q.includeOptional }),
-      $order: `${src.fields.date} DESC`,
-      $limit: String(src.rowLimit),
-    }, opts),
+      // ":id" breaks ties so offset paging is stable.
+      $order: `${src.fields.date} DESC, :id`,
+    }, src.rowLimit, opts),
     socrataQuery(src.domain, src.dataset, {
       $select: `${idCol},${src.fields.date}`,
       $group: `${idCol},${src.fields.date}`,

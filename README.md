@@ -22,11 +22,10 @@ Two lead products ("verticals") run on the same engine today:
 ```
 src/verticals/*.ts        one config file per vertical (validated with Zod)
 src/engine/schema.ts      config schema + Lead type
-src/engine/sources/       data-source adapters (Socrata open-data portals today)
+src/engine/sources/       data-source adapters; Socrata portals via socrata-fetch (github.com/aahangan/socrata-fetch)
 src/engine/normalize.ts   rows -> leads: filtering, field mapping, de-duplication, scoring (pure, unit tested)
 src/engine/leads.ts       fetch + normalize for one vertical and city
 src/engine/run.ts         the daily delivery run: idempotent, time-boxed, per-source isolation, alerts
-src/engine/retry.ts       retries with exponential backoff and jitter
 src/engine/log.ts         structured JSON logs
 src/lib/runtime.ts        wires the run to Redis, the feeds and email
 ```
@@ -41,7 +40,7 @@ de-duplication key, category labels and scoring weights, and the email and outre
 `/api/cron/digest` is called by Vercel Cron at 11:00 UTC (about 7am New York).
 - **Safe re-runs:** each account is claimed once per date in Redis and every delivered lead is remembered, so running twice, or backfilling, never sends duplicates. A failed send releases its claim so a re-run can retry.
 - **Isolation:** each (vertical, city) feed is fetched once and independently; one broken feed only affects its own customers.
-- **Limits:** Socrata requests time out after 20s and retry up to 3 times with backoff; the whole run stops after 4 minutes and reports which accounts it didn't reach.
+- **Limits:** Socrata requests are paged, time out after 20s and retry up to 3 times with backoff (via [socrata-fetch](https://github.com/aahangan/socrata-fetch)); the whole run stops after 4 minutes and reports which accounts it didn't reach.
 - **Monitoring:** structured logs for every step, plus email alerts to `ADMIN_EMAILS` when a feed returns zero rows, a feed's columns change, a feed fails, or a run is partial or fails. Recent runs are shown on `/admin`.
 
 Backfill missed days (skips days that already completed unless `--force`):

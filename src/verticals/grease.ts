@@ -47,7 +47,7 @@ export const grease = defineVertical({
       },
       requiredColumns: ["camis", "dba", "zipcode", "inspection_date", "violation_code", "action"],
       minWeeklyLeads: 20,
-      rowLimit: 20000,
+      rowLimit: 50000,
     },
     chicago: {
       type: "socrata",
@@ -83,7 +83,7 @@ export const grease = defineVertical({
       },
       requiredColumns: ["license_", "dba_name", "zip", "inspection_date", "results", "violations"],
       minWeeklyLeads: 3,
-      rowLimit: 5000,
+      rowLimit: 20000,
     },
   },
   email: {

@@ -1,8 +1,9 @@
-// Shared connector for city open-data portals running Socrata (SODA 2.1 / SoQL).
+// Shared connector for city open-data portals running Socrata (SODA 2.1 / SoQL), built on socrata-fetch.
+import { createClient, type SoqlParams } from "socrata-fetch";
 import { log } from "../log";
-import { HttpError, withRetry } from "../retry";
 
-export type Row = Record<string, string | undefined>;
+export { missingColumns, quoteList } from "socrata-fetch";
+export type { Row } from "socrata-fetch";
 
 export type QueryOptions = {
   /** Seconds Next.js may cache the response; ignored when `fresh` is set. */
@@ -13,35 +14,29 @@ export type QueryOptions = {
   retries?: number;
 };
 
-export function socrataUrl(domain: string, dataset: string, params: Record<string, string>) {
-  return `https://${domain}/resource/${dataset}.json?${new URLSearchParams(params)}`;
+const PAGE_SIZE = 5000;
+
+function client(domain: string, opts: QueryOptions) {
+  return createClient({
+    domain,
+    appToken: process.env.SOCRATA_APP_TOKEN,
+    // Resolve fetch per call so Next.js's patched fetch (and test stubs) are always used.
+    fetch: (input, init) => fetch(input, init),
+    init: opts.fresh ? { cache: "no-store" } : { next: { revalidate: opts.revalidate ?? 3600 } },
+    timeoutMs: opts.timeoutMs ?? 20_000,
+    retries: opts.retries ?? 3,
+    onRetry: ({ dataset, attempt, delayMs, error }) => log.warn("socrata.retry", { domain, dataset, attempt, delayMs, error }),
+  });
 }
 
-export async function socrataQuery(domain: string, dataset: string, params: Record<string, string>, opts: QueryOptions = {}): Promise<Row[]> {
-  const url = socrataUrl(domain, dataset, params);
-  const headers: Record<string, string> = {};
-  if (process.env.SOCRATA_APP_TOKEN) headers["X-App-Token"] = process.env.SOCRATA_APP_TOKEN;
-  const caching = opts.fresh ? { cache: "no-store" as const } : { next: { revalidate: opts.revalidate ?? 3600 } };
-
-  return withRetry(
-    async () => {
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(opts.timeoutMs ?? 20000), ...caching });
-      if (!res.ok) throw new HttpError(res.status, `${domain}/${dataset} returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
-      const body = await res.json();
-      if (!Array.isArray(body)) throw new HttpError(502, `${domain}/${dataset} returned a non-array body`);
-      return body as Row[];
-    },
-    {
-      retries: opts.retries ?? 3,
-      onRetry: (attempt, delayMs, err) => log.warn("socrata.retry", { domain, dataset, attempt, delayMs, error: err }),
-    },
-  );
+/** One request. */
+export function socrataQuery(domain: string, dataset: string, params: SoqlParams, opts: QueryOptions = {}) {
+  return client(domain, opts).query(dataset, params);
 }
 
-/** Columns from `required` that appear in none of the rows: a sign the feed's schema changed. */
-export function missingColumns(rows: Row[], required: string[]) {
-  if (!rows.length) return [];
-  return required.filter((c) => !rows.some((r) => c in r));
+/** Every matching row up to `maxRows`, fetched in pages. Logs a warning if the cap cut results off. */
+export async function socrataQueryAll(domain: string, dataset: string, params: SoqlParams, maxRows: number, opts: QueryOptions = {}) {
+  const rows = await client(domain, opts).queryAll(dataset, params, { pageSize: Math.min(PAGE_SIZE, maxRows), maxRows });
+  if (rows.length >= maxRows) log.warn("socrata.truncated", { domain, dataset, maxRows });
+  return rows;
 }
-
-export const quoteList = (xs: string[]) => xs.map((x) => `'${x.replace(/'/g, "''")}'`).join(",");
