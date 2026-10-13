@@ -89,12 +89,19 @@ def build_payload(t: pd.Timestamp, feats: pd.DataFrame, info: pd.DataFrame, bund
 
 
 def upload(path: str, body: dict) -> dict:
-    url, secret = os.environ.get("RATSIGNAL_URL", "").rstrip("/"), os.environ.get("RATSIGNAL_ADMIN_SECRET", "")
+    url, secret = api_config()
+    res = requests.post(f"{url}{path}", json=body, headers={"Authorization": f"Bearer {secret}"}, timeout=120)
+    if not res.ok:
+        raise SystemExit(f"upload to {path} failed: HTTP {res.status_code}: {res.text[:300]}")
+    return res.json()
+
+
+def api_config() -> tuple[str, str]:
+    # Secrets pasted into CI settings often carry a trailing newline, which is invalid in a header.
+    url, secret = os.environ.get("RATSIGNAL_URL", "").strip().rstrip("/"), os.environ.get("RATSIGNAL_ADMIN_SECRET", "").strip()
     if not url or not secret:
         raise SystemExit("RATSIGNAL_URL and RATSIGNAL_ADMIN_SECRET must be set to upload (use --no-upload to skip)")
-    res = requests.post(f"{url}{path}", json=body, headers={"Authorization": f"Bearer {secret}"}, timeout=120)
-    res.raise_for_status()
-    return res.json()
+    return url, secret
 
 
 def main() -> None:

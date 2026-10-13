@@ -10,7 +10,6 @@ two baselines recomputed for that same date. A falling precision is the signal t
 from __future__ import annotations
 
 import argparse
-import os
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -18,11 +17,12 @@ import requests
 
 from . import data
 from . import features as F
+from .score import api_config
 from .train import add_rule_baseline
 
 
 def _get(path: str) -> dict:
-    url, secret = os.environ["RATSIGNAL_URL"].rstrip("/"), os.environ["RATSIGNAL_ADMIN_SECRET"]
+    url, secret = api_config()
     res = requests.get(f"{url}{path}", headers={"Authorization": f"Bearer {secret}"}, timeout=60)
     res.raise_for_status()
     return res.json()
@@ -70,7 +70,7 @@ def main() -> None:
         print(d, metrics)
         if not args.dry_run:
             body = {"date": d, "evaluatedAt": datetime.now(timezone.utc).isoformat(), "metrics": metrics}
-            url, secret = os.environ["RATSIGNAL_URL"].rstrip("/"), os.environ["RATSIGNAL_ADMIN_SECRET"]
+            url, secret = api_config()
             requests.post(f"{url}/api/admin/risk?kind=evaluation", json=body,
                           headers={"Authorization": f"Bearer {secret}"}, timeout=60).raise_for_status()
 
