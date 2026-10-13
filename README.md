@@ -17,6 +17,15 @@ Two lead products ("verticals") run on the same engine today:
 | `vermin` | Pest control companies | Citations for rats, mice, roaches, flies |
 | `grease` | Grease-trap pumpers, drain cleaners, commercial plumbers | Citations for drainage, sewage, plumbing, grease traps |
 
+## Pest-risk forecast (ML)
+
+A gradient-boosted model in [`ml/`](ml/README.md) predicts which NYC restaurants will be cited for pests in the
+next 60 days, using inspection history, 311 rodent complaints and city rat inspections. It is trained on
+time-based splits with leakage tests, scored daily by a GitHub Actions batch job, and shown on the dashboard's
+**Forecast** tab. On a held-out period (Apr–Aug 2026) 30% of its top 100 restaurants were cited within 60 days,
+vs 16% for a hand-written rule, 8% for the existing heat score and 4% overall. Served forecasts are re-scored
+once their window closes to catch drift.
+
 ## Architecture
 
 ```
@@ -28,6 +37,8 @@ src/engine/leads.ts       fetch + normalize for one vertical and city
 src/engine/run.ts         the daily delivery run: idempotent, time-boxed, per-source isolation, alerts
 src/engine/log.ts         structured JSON logs
 src/lib/runtime.ts        wires the run to Redis, the feeds and email
+src/lib/risk.ts           stores and serves the daily pest-risk forecast (uploaded by ml/)
+ml/                       Python model: features, training, daily scorer, monitoring
 ```
 
 ### Adding a vertical

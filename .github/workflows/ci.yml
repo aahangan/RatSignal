@@ -24,3 +24,18 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ml
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - name: Model tests
+        run: uv run pytest -q
+      - name: Saved model loads and scores
+        run: uv run python -c "from riskmodel.score import load_bundle; b = load_bundle(); print(b['version'], b['config'])"

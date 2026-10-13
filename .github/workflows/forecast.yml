@@ -1,0 +1,30 @@
+name: Daily forecast
+
+# Scores every active NYC restaurant with the saved model and uploads the forecast to RatSignal,
+# then evaluates past forecasts whose 60-day window has closed.
+on:
+  schedule:
+    - cron: "30 10 * * *" # ~6:30am New York, before the 7am lead email
+  workflow_dispatch:
+
+concurrency: forecast
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ml
+    env:
+      RATSIGNAL_URL: https://getratsignal.com
+      RATSIGNAL_ADMIN_SECRET: ${{ secrets.RATSIGNAL_ADMIN_SECRET }}
+      SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --no-dev
+      - name: Score and upload
+        run: uv run python -m riskmodel.score
+      - name: Evaluate past forecasts
+        run: uv run python -m riskmodel.monitor --cached

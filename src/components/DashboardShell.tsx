@@ -4,7 +4,7 @@ import { CITIES } from "@/lib/cities";
 import { Logo } from "./Logo";
 import { LogoutButton } from "./LogoutButton";
 
-export function DashboardShell({ account, active, children }: { account: Account; active: "leads" | "settings" | "admin"; children: React.ReactNode }) {
+export function DashboardShell({ account, active, children }: { account: Account; active: "leads" | "forecast" | "settings" | "admin"; children: React.ReactNode }) {
   const tab = (href: string, label: string, on: boolean) => (
     <Link href={href} className={`rounded-md px-3 py-1.5 ${on ? "bg-foreground text-white" : "text-muted hover:text-foreground"}`}>{label}</Link>
   );
@@ -12,10 +12,11 @@ export function DashboardShell({ account, active, children }: { account: Account
     <>
       <header className="border-b border-line bg-card">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <Logo href="/dashboard" />
-            <nav className="flex gap-1 text-sm">
+            <nav className="flex flex-wrap gap-1 text-sm">
               {tab("/dashboard", "Leads", active === "leads")}
+              {tab("/dashboard/forecast", "Forecast", active === "forecast")}
               {tab("/dashboard/settings", "Settings", active === "settings")}
               {isAdmin(account) && tab("/admin", "Admin", active === "admin")}
             </nav>
