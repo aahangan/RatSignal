@@ -126,5 +126,19 @@ def main() -> None:
     assert np.isfinite(feats["prob"]).all()
 
 
+def report_errors(fn) -> None:
+    """Runs fn; on failure, also prints a GitHub Actions error annotation (visible without access to the logs)."""
+    try:
+        fn()
+    except BaseException as err:  # noqa: BLE001
+        if os.environ.get("GITHUB_ACTIONS") and not (isinstance(err, SystemExit) and err.code in (0, None)):
+            message = f"{type(err).__name__}: {err}".replace("\n", " ")[:500]
+            secret = os.environ.get("RATSIGNAL_ADMIN_SECRET", "").strip()
+            if secret:
+                message = message.replace(secret, "***")
+            print(f"::error title=forecast failed::{message}", flush=True)
+        raise
+
+
 if __name__ == "__main__":
-    main()
+    report_errors(main)

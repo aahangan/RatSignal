@@ -17,7 +17,7 @@ import requests
 
 from . import data
 from . import features as F
-from .score import api_config
+from .score import api_config, report_errors
 from .train import add_rule_baseline
 
 
@@ -76,4 +76,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    report_errors(main)
