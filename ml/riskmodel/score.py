@@ -89,7 +89,9 @@ def build_payload(t: pd.Timestamp, feats: pd.DataFrame, info: pd.DataFrame, bund
 
 
 def upload(path: str, body: dict) -> dict:
-    url, secret = os.environ["RATSIGNAL_URL"].rstrip("/"), os.environ["RATSIGNAL_ADMIN_SECRET"]
+    url, secret = os.environ.get("RATSIGNAL_URL", "").rstrip("/"), os.environ.get("RATSIGNAL_ADMIN_SECRET", "")
+    if not url or not secret:
+        raise SystemExit("RATSIGNAL_URL and RATSIGNAL_ADMIN_SECRET must be set to upload (use --no-upload to skip)")
     res = requests.post(f"{url}{path}", json=body, headers={"Authorization": f"Bearer {secret}"}, timeout=120)
     res.raise_for_status()
     return res.json()
