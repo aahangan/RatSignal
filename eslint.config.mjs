@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Python model code and its virtualenv.
     "ml/**",
+    // Local outreach scripts (gitignored).
+    "outreach/**",
   ]),
 ]);
 

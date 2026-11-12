@@ -7,6 +7,8 @@ import type { RunReport } from "@/engine/run";
 import { CITIES } from "@/lib/cities";
 import { db } from "@/lib/db";
 import { forecastMeta, forecastRuns } from "@/lib/risk";
+import { listQuotes } from "@/lib/quotes";
+import { formatPhone } from "@/lib/cities";
 import { getVertical } from "@/verticals";
 
 export const metadata: Metadata = { title: "Admin · RatSignal", robots: { index: false } };
@@ -19,7 +21,7 @@ export default async function Admin() {
   const accounts = (await listAccounts()).sort((a, b) => b.createdAt - a.createdAt);
   const runDates = ((await db.get<string[]>("runs")) ?? []).slice(0, 10);
   const runs = (await db.mget<RunReport>(runDates.map((d) => `run:${d}`))).filter((r): r is RunReport => !!r);
-  const [risk, riskRuns] = await Promise.all([forecastMeta(), forecastRuns()]);
+  const [risk, riskRuns, quotes] = await Promise.all([forecastMeta(), forecastRuns(), listQuotes(25)]);
   const evaluated = riskRuns.filter((r) => r.evaluation).slice(0, 10);
   const pct = (x?: number) => (x === undefined ? "–" : `${(x * 100).toFixed(1)}%`);
 
@@ -58,6 +60,28 @@ export default async function Admin() {
           </div>
         </section>
       </div>
+      <section className="mt-6 rounded-2xl border border-line bg-card p-6">
+        <h2 className="mb-1 font-semibold">Quote requests ({quotes.length})</h2>
+        <p className="mb-4 text-sm text-muted">Restaurants asking for a pest control quote (from /quote and postcard links). Each is also emailed to you; pass it to a partner the same day.</p>
+        {quotes.length === 0 ? <p className="text-sm text-muted">None yet.</p> : (
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted uppercase"><tr><th className="py-2 pr-3">When</th><th className="py-2 pr-3">Restaurant</th><th className="py-2 pr-3">Contact</th><th className="py-2 pr-3">Pests</th><th className="py-2">Re-inspection</th></tr></thead>
+              <tbody className="divide-y divide-line">
+                {quotes.map((q) => (
+                  <tr key={q.id}>
+                    <td className="py-2 pr-3">{fmt(q.createdAt)}</td>
+                    <td className="py-2 pr-3"><div className="font-medium">{q.restaurant}</div><div className="text-xs text-muted">{q.address}</div></td>
+                    <td className="py-2 pr-3">{q.contactName}<div className="text-xs text-muted">{formatPhone(q.phone.replace(/\D/g, "").slice(-10)) ?? q.phone}{q.email ? ` · ${q.email}` : ""}</div></td>
+                    <td className="py-2 pr-3">{q.pests.join(", ") || "–"}</td>
+                    <td className="py-2">{q.timing}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
       <section className="mt-6 rounded-2xl border border-line bg-card p-6">
         <h2 className="mb-1 font-semibold">Daily runs</h2>
         <p className="mb-4 text-sm text-muted">The 7am delivery job. Problems are also emailed to you as alerts.</p>
