@@ -22,16 +22,18 @@ const LEDGER = new URL("../outreach/postcards-sent.csv", import.meta.url).pathna
 const FROM = { name: "RatSignal", address_line1: "330 De Neve Drive", address_city: "Los Angeles", address_state: "CA", address_zip: "90024" };
 
 // Chains have corporate pest contracts; a local owner is who reads the mail and decides.
-const CHAINS = /\b(mcdonald|subway|dunkin|starbucks|burger king|wendy|popeyes|kfc|taco bell|chipotle|domino|papa john|pizza hut|panera|chick-fil-a|shake shack|sweetgreen|le pain quotidien|chuck e\. cheese|ihop|potbelly|paris baguette|insomnia cookies|checkers|white castle|applebee|crumbl|playa bowls|just salad|dig inn|pret a manger|five guys|baskin|krispy|wingstop|jamba|tim hortons|7-eleven)\b/i;
+const CHAINS = /\b(mcdonald|subway|dunkin|starbucks|burger king|wendy|popeyes|kfc|taco bell|chipotle|domino|papa john|pizza hut|panera|chick-fil-a|shake shack|sweetgreen|le pain quotidien|chuck e\. cheese|ihop|potbelly|paris baguette|insomnia cookies|checkers|white castle|applebee|crumbl|playa bowls|just salad|dig inn|pret a manger|five guys|baskin|krispy|wingstop|jamba|tim hortons|7-eleven|carrot express|joe & the juice|bareburger|chopt|cava|dos toros|pinkberry|auntie anne)\b/i;
 
 const title = (s: string) => (s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s/&(-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()) : s);
+// Lead names arrive HTML-escaped ("Chicken &amp; Burger"); decode before re-escaping for the card.
+const unesc = (s: string) => s.replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" })[e as string]!);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
 const mailed = new Set(existsSync(LEDGER) ? readFileSync(LEDGER, "utf8").split("\n").map((l) => l.split(",")[0]).filter(Boolean) : []);
 const { leads } = await fetchLeads(getVertical("vermin"), "nyc", { days: DAYS, zips: [], fresh: true });
 const picks = leads
-  .filter((l) => !mailed.has(l.id) && !CHAINS.test(l.name) && l.address && l.zip)
+  .filter((l) => !mailed.has(l.id) && !CHAINS.test(unesc(l.name)) && l.address && l.zip)
   .sort((a, b) => b.heat - a.heat)
   .slice(0, MAX);
 
@@ -41,9 +43,9 @@ for (const l of picks) {
   const camis = l.id.replace("nyc:", "");
   const code = encodeCode(camis)!;
   const url = `${SITE}/q/${code}`;
-  const name = title(l.name);
+  const name = title(unesc(l.name));
   const pests = l.categories.filter((c) => c !== "conditions").join(" and ") || "pests";
-  const street = title(l.address.replace(/\s+(Manhattan|Brooklyn|Queens|Bronx|Staten Island)$/i, ""));
+  const street = title(unesc(l.address).replace(/\s+(Manhattan|Brooklyn|Queens|Bronx|Staten Island)$/i, ""));
   const boro = (l.address.match(/(Manhattan|Brooklyn|Queens|Bronx|Staten Island)$/i)?.[1] ?? "New York");
   const city = boro === "Manhattan" ? "New York" : boro;
   const qr = await QRCode.toDataURL(url, { margin: 0, width: 300 });
