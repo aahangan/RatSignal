@@ -1,6 +1,6 @@
 // Mails a postcard to each NYC restaurant newly cited for pests, linking to its pre-filled quote page.
 //
-//   npx tsx scripts/postcards.mts [--days 3] [--max 20] [--send]
+//   npx tsx scripts/postcards.mts [--days 3] [--max 20] [--boro Brooklyn] [--send]
 //
 // Without --send (or without LOB_API_KEY) it only prints what it would mail. With a Lob *test* key,
 // Lob renders proofs but mails nothing; a live key mails real cards. Already-mailed restaurants are
@@ -16,6 +16,8 @@ const num = (flag: string, d: number) => { const i = args.indexOf(flag); return 
 const DAYS = num("--days", 3);
 const MAX = num("--max", 20);
 const SEND = args.includes("--send");
+// Only mail where a partner will take the call (e.g. --boro Brooklyn).
+const BORO = args.includes("--boro") ? args[args.indexOf("--boro") + 1].toLowerCase() : null;
 const LOB_KEY = process.env.LOB_API_KEY ?? "";
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://getratsignal.com";
 const LEDGER = new URL("../outreach/postcards-sent.csv", import.meta.url).pathname;
@@ -33,7 +35,7 @@ const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("en-
 const mailed = new Set(existsSync(LEDGER) ? readFileSync(LEDGER, "utf8").split("\n").map((l) => l.split(",")[0]).filter(Boolean) : []);
 const { leads } = await fetchLeads(getVertical("vermin"), "nyc", { days: DAYS, zips: [], fresh: true });
 const picks = leads
-  .filter((l) => !mailed.has(l.id) && !CHAINS.test(unesc(l.name)) && l.address && l.zip)
+  .filter((l) => !mailed.has(l.id) && !CHAINS.test(unesc(l.name)) && l.address && l.zip && (!BORO || unesc(l.address).toLowerCase().endsWith(BORO)))
   .sort((a, b) => b.heat - a.heat)
   .slice(0, MAX);
 
